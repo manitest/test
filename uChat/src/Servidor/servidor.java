@@ -1,6 +1,6 @@
 package Servidor;
 
-//Importacion de rusta.
+//Importacion de rusta
 import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
