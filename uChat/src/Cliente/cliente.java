@@ -1,5 +1,5 @@
 /*
- * Chat client uChat.
+ * Chat client uChat..
  * 
  * Developed by sofTroopers:
  *      -Friloren
