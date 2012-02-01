@@ -1,424 +1,567 @@
 /*
- * Zapatero
- * Chat client uChat
+ * Chat client uChat.
  * 
  * Developed by sofTroopers:
- *      -Friloren
- *      -gllera
+ *	  -Friloren
+ *	  -gllera
  * 
  */
+
 package Cliente;
 import java.awt.BorderLayout;
+import java.awt.Color;
 import java.awt.Dimension;
-import java.awt.event.*;
+import java.awt.Font;
+import java.awt.Point;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
+import java.awt.event.WindowEvent;
 import java.io.IOException;
+import java.io.ObjectInputStream;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.util.ArrayList;
-import java.util.Scanner;
-import javax.swing.*;
+
+import javax.swing.BorderFactory;
+import javax.swing.DefaultListModel;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.JPopupMenu;
+import javax.swing.JScrollPane;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
+import javax.swing.JTextPane;
+import javax.swing.ScrollPaneConstants;
 import javax.swing.text.DefaultCaret;
+import javax.swing.text.html.HTMLDocument;
 
 
 //GUI
 //Ventana principal.
 @SuppressWarnings("serial")
 class ventPrincipal extends JFrame implements ActionListener, KeyListener{
-    
-    //Definicion de cosillas.
-    static int puertoServ = 1398; //Puerto del servidor.
-    double cVers = 0.4; //Version del programa. Aumntar conforme se realizan cambios.
-    int milisRec = 500; //La frecuencia en ms con la que el programa consulta si se
-                        //han introducido los datos requeridos.
-    
-    //Declaraciones generales.
-    //    Del class chat
-    static Socket s;
-    static Scanner in;
-    static PrintWriter outd;
-    static int filas = 0;
-    static boolean noConecta = true;
-    static boolean yaProbado = true;
-    static boolean seguirConectado = false;
-    //    Cuadros de texto.
-    JTextArea cEnv;
-    static JTextArea cRec;
-    //    Lista
-    static DefaultListModel<String> usersModel;
-    static JList<String> usersList;
-    //    Labels
-    static JLabel conexionActual;
-    //    Strings varios
-    String dirServ;
-    String msjNoEnv;
-    String msj = "";    
-    String msjRec = "";
-    
-    
-    //Variable de conexion.
-    static boolean conectado = false;
-    //Comprobador de linea anterior
-    static boolean yaEnAnterior = false;
-    //Array de lineas grabadas y su indice.
-    int indSentLines = -1;
-    int navSentLines = -1;
-    static ArrayList<String> sentLines = new ArrayList<String>();
-    
-    
-    //Declaracion de la ventana.
-    static JFrame ventPrincipal;
-    
-    // Constructor de la ventana principal.
-    ventPrincipal(){
-        //Inicializacion de la ventana.
-        ventPrincipal = new JFrame();
-        
-        //Caracteristicas generales.
-        ventPrincipal.setSize(new Dimension(510,500));
-        ventPrincipal.setTitle("uChat v"+cVers);
-        
-        
-        
-        //Objetos de la ventana.
-        //    Labels
-        conexionActual = new JLabel("Desconectado   ", JLabel.CENTER );
-            conexionActual.setVerticalAlignment(JLabel.TOP);
-            conexionActual.setHorizontalAlignment(JLabel.RIGHT);
-            
-            
-        //    Cuadro de texto de mensajes entrantes y su imagen.
-        cRec = new JTextArea();
-            cRec.setEditable(false);
-            cRec.setSize(new Dimension(330,370));
-            cRec.setLineWrap(true);
-            cRec.setWrapStyleWord(true);
-        //        Scroll.
-        JScrollPane cRecScroll = new JScrollPane(cRec);
-            cRecScroll.setBounds(10,20,330,370);
-            cRecScroll.setViewportView(cRec);
-            cRecScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        //        Scroll baja automaticamente.
-        DefaultCaret caret = (DefaultCaret)cRec.getCaret();
-            caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
+	
+	//Definicion de cosillas.
+	static int puertoServ = 1398; //Puerto del servidor.
+	double cVers = 0.61; //Version del programa. Aumentar conforme se realizan cambios.
+	int milisRec = 500; //La frecuencia en ms con la que el programa consulta si se
+						//han introducido los datos requeridos.
+	
+	//Declaraciones generales.
+	//	Cuadros de texto.
+	static JTextArea cEnv;
+	static JTextPane cRec;
+	//	  HTML Doc
+	static HTMLDocument hDoc;
+	//	Field
+	static JTextField direccionText;
+	static JTextField usernameText;
+	//	List.
+	static DefaultListModel<String> usersModel;
+	static JList<String> usersList;
+	//	Labels
+	static JLabel conexionActual;
+	//	Buttons
+	static JButton conexionButton;
+	//	String
+	static String msj = "";
 
-            
-        
-        //    Cuadro de texto de escritura.
-        cEnv = new JTextArea();
-            cEnv.setBounds(10,395,330,65);
-            cEnv.setLineWrap(true);
-            cEnv.setWrapStyleWord(true);
-            cEnv.addKeyListener(this);
-            cEnv.getDocument().putProperty("filterNewlines", Boolean.TRUE);
-        //        Scroll
-        JScrollPane cEnvScroll = new JScrollPane(cEnv);
-            cEnvScroll.setBounds(10,395,330,65);
-            cEnvScroll.setViewportView(cEnv);
-            cEnvScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-        
-            
-        //Lista de usuarios online.
-        //    Model
-        usersModel = new DefaultListModel<String>();
-        //    Lista
-        usersList = new JList<String>(usersModel);
-            usersList.setBounds(350,20,150,445);
-        //    Scroll
-        JScrollPane usersListPane = new JScrollPane(usersList);
-            usersListPane.setBounds(350,20,150,440);
-            usersListPane.setViewportView(usersList);
-            usersListPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
-            
-            
+	//Thread de conexion.
+	static Thread conexion = new Thread(new chat());
+	
+	
+	//Array de lineas grabadas y su indice.
+	int indSentLines = -1;
+	int navSentLines = 0;
+	static ArrayList<String> sentLines = new ArrayList<String>();
+	
+	
+	//Declaracion de la ventana.
+	static JFrame ventPrincipal;
+	
+	// Constructor de la ventana principal.
+	ventPrincipal(){
+		//Inicializacion de la ventana.
+		ventPrincipal = new JFrame();
+		
+		//Caracteristicas generales.
+		ventPrincipal.setSize(new Dimension(530,530));
+		ventPrincipal.setTitle("uChat v"+cVers);
+		
+		
+		//Objetos de la ventana.
+	
+		//  Labels
+		conexionActual = new JLabel("Desconectado.");
+			conexionActual.setBounds(10,470,510,20);
+		JLabel direccionLab = new JLabel("Direccion:");
+			direccionLab.setBounds(10, 0, 100, 20);
+		JLabel usernameLab = new JLabel("Username");
+			usernameLab.setBounds(220,0,100,20);
+		//	JTextFields
+		direccionText = new JTextField();
+			direccionText.setBounds(10, 20, 200, 24);
+		usernameText = new JTextField();
+			usernameText.setBounds(220,20,140,24);
+		//  Buttons
+		conexionButton = new JButton("Conectar");
+			 conexionButton.setBounds(370,6,150,38);
+		//	JTextFields
+		direccionText = new JTextField();
+			 direccionText.setBounds(10, 20, 200, 24);
+		//  Buttons
+		conexionButton = new JButton("Conectar");
+			 conexionButton.setBounds(370,5,150,40);
+			 
+			
+		//	Cuadro de texto de mensajes entrantes y su imagen.
+		cRec = new JTextPane();
+			cRec.setContentType("text/html");
+			cRec.setEditable(false);
+		//		Scroll.
+		hDoc = (HTMLDocument)cRec.getDocument();
+			chat.imprimirMsj("Introduce la direccion del servidor y conecta.");
+		JScrollPane cRecScroll = new JScrollPane(cRec);
+			cRecScroll.setBounds(10,50,350,345);
+			cRecScroll.setViewportView(cRec);
+			cRecScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		//		Scroll baja automaticamente.
+		DefaultCaret caret = (DefaultCaret)cRec.getCaret();
+			caret.setUpdatePolicy(DefaultCaret.ALWAYS_UPDATE);
 
-        //Se añaden los objetos.
-        ventPrincipal.add(usersListPane,BorderLayout.CENTER);
-        ventPrincipal.add(cRecScroll,BorderLayout.CENTER);
-        ventPrincipal.add(cEnvScroll,BorderLayout.CENTER);
-        ventPrincipal.add(conexionActual);
-        
-        //Listener de la vetana al cerrarse.
-        ventPrincipal.addWindowListener(new java.awt.event.WindowAdapter() {
-            @Override
-            public void windowClosing(WindowEvent winEvt) {
-                cliente.cerrarPrograma();
-            }
-        });
-        
-        //Hace la ventana visible y su tamaño fijo.
-        ventPrincipal.setResizable(false);
-        ventPrincipal.setVisible(true);
-    }
-    
+			
+		
+		//	Cuadro de texto de escritura.
+		cEnv = new JTextArea();
+			cEnv.setEnabled(false);
+			cEnv.setLineWrap(true);
+			cEnv.setWrapStyleWord(true);
+			cEnv.addKeyListener(this);
+			cEnv.getDocument().putProperty("filterNewlines", Boolean.TRUE);
+		//		Scroll
+		JScrollPane cEnvScroll = new JScrollPane(cEnv);
+			cEnvScroll.setBounds(10,400,350,65);
+			cEnvScroll.setViewportView(cEnv);
+			cEnvScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+		
+			
+		//Lista de usuarios online.
+		//	Model
+		usersModel = new DefaultListModel<String>();
+		//	Lista
+		usersList = new JList<String>(usersModel);
+		// Panel de detalles de los usuarios.
+		final JPopupMenu usersDetailPane = new JPopupMenu();
+			final JLabel usrName = new JLabel();
+				usrName.setFont(new Font(usrName.getFont().getName(),Font.BOLD,usrName.getFont().getSize()));
+			final JLabel usrIP = new JLabel();
+			final JLabel usrTimeOn = new JLabel();
+				
+			usersDetailPane.setBackground(Color.lightGray);
+			usersDetailPane.setBorder(BorderFactory.createLineBorder(Color.black));
+			usersDetailPane.add(usrName);
+			usersDetailPane.add(usrIP);
+			usersDetailPane.add(usrTimeOn);
+			
+		//	Scroll
+		final JScrollPane usersScrollPane = new JScrollPane(usersList);
+			usersScrollPane.setBounds(370,50,150,415);
+			usersScrollPane.setViewportView(usersList);
+			usersScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
+			
 
-    @Override
-    public void keyPressed(KeyEvent e) {
-        if(e.getKeyCode() == KeyEvent.VK_ENTER){
-            // Si pulsa enter, envia el mensaje.
-            msj = cEnv.getText();
-            // Si el mensaje es nulo, no lo envia.
-            if((!msj.equals("") && !msj.equals(" "))){
-                if(conectado){
-                    // Comprueba si es un comando
-                    if(msj.charAt(0) == '/')
-                        chat.lecturaComandoUsr(msj);
-                    else {
-                        //Envia el mensaje y lo graba.
-                        indSentLines++;
-                        navSentLines = indSentLines+1;
-                        sentLines.add(indSentLines, msj);
-                        chat.enviarMsj(msj);
-                    }
-                } else {
-                    //Para cuando aun no esta conectado.
-                    dirServ = msj;
-                    chat.yaProbado = false;
-                }
-            }
-            cEnv.setText("");
-        }
-    }
+		//Se añaden los objetos.
+		//Boton de conexion.
+		ventPrincipal.add(conexionButton,BorderLayout.CENTER);
+		//Label de conexion actual.
+		ventPrincipal.add(conexionActual,BorderLayout.CENTER);
+		//Menu conexion.
+		ventPrincipal.add(direccionLab,BorderLayout.CENTER);
+		ventPrincipal.add(direccionText,BorderLayout.CENTER);
+		ventPrincipal.add(usernameLab, BorderLayout.CENTER);
+		ventPrincipal.add(usernameText, BorderLayout.CENTER);
+		//Otros.
+		ventPrincipal.add(usersScrollPane,BorderLayout.CENTER);
+		ventPrincipal.add(cRecScroll,BorderLayout.CENTER);
+		ventPrincipal.add(cEnvScroll,BorderLayout.CENTER);
+		ventPrincipal.add(new JLabel(""));
+		
+		
+		//Listener de mouse de la lista.
+		usersList.addMouseListener(new MouseAdapter() {
+			public void mouseClicked(MouseEvent e) {
+				
+				String userSelect;
+				UserUsr usr;
+				Point  p = e.getPoint();
+				
+				if((userSelect = usersList.getSelectedValue()) != null){
+					usr = chat.userSearch(userSelect);
+					usrName.setText(userSelect);
+					usrIP.setText(usr.ip);
+					usrTimeOn.setText(usr.timeOn);
+					usersDetailPane.show(usersScrollPane, p.x, p.y);
+				} 
+			}
+		});
+		
+		//Listener de la vetana al cerrarse.
+		ventPrincipal.addWindowListener(new java.awt.event.WindowAdapter() {
+			@Override
+			public void windowClosing(WindowEvent winEvt) {
+				cliente.cerrarPrograma();
+			}
+			@Override
+			public void windowOpened(WindowEvent e){
+				direccionText.requestFocus();
+			}
+		});
+		
+		//Listener del boton.
+		conexionButton.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e){
+				//Se ejecuta cuando se pulsa el boton.
+				if(chat.conectado){
+					//Si esta conectado, desconecta.
+					chat.cerrarConexion();						
+				} else
+					//Inicia o reinicia el thread de conexion.
+					if(conexion.isAlive())
+						chat.inicioThread();
+					else
+						conexion.start();
+			}
+		});
+		
+		
+		//Hace la ventana visible y su tamaño fijo.
+		ventPrincipal.setResizable(false);
+		ventPrincipal.setVisible(true);
+	}
+	
+
+	@Override
+	public void keyPressed(KeyEvent e) {
+		if(e.getKeyCode() == KeyEvent.VK_ENTER){
+			//Obtiene el mensaje.
+			msj = cEnv.getText();
+			// Si el mensaje es nulo o no esta conectado, no lo envia.
+			if(!msj.equals("") && !msj.equals(" ")){
+				//Graba el mensaje.
+				indSentLines++;
+				sentLines.add(indSentLines, msj);
+				navSentLines = indSentLines+1;
+				// Comprueba si es un comando.
+				if(msj.charAt(0) == '/')
+					chat.lecturaComandoUsr(msj);
+				else {
+					//Si no lo es lo envia.
+					// Comprueba si es un comando.
+					if(msj.charAt(0) == '/')
+						chat.lecturaComandoUsr(msj);
+					else {
+						//Envia el mensaje.
+						chat.enviarMsj(msj);
+					}
+				}
+				cEnv.setText("");
+			}
+		}
+	}
 
 
-    @Override
-    public void keyReleased(KeyEvent e) {
-        //Al soltar enter limpia el cuadro de texto.
-        if(e.getKeyCode() == KeyEvent.VK_ENTER){
-            cEnv.setText("");
-            
-        //Navegacion por los mensajes enviados.
-        } else if(e.getKeyCode() == KeyEvent.VK_KP_UP || e.getKeyCode() == KeyEvent.VK_UP){
-            //Sube de mensaje excepto si es el primero.
-            if(navSentLines > 1)
-                navSentLines--;
-            //Si estaba en la ultima linea escrita, la guarda antes de mostrar anteriores.
-            if(navSentLines == indSentLines)
-                sentLines.add(navSentLines+1, cEnv.getText());
-            //Actualiza el conetenido del cuadro de texto.
-            cEnv.setText(sentLines.get(navSentLines));
-            
-        } else if(e.getKeyCode() == KeyEvent.VK_KP_DOWN || e.getKeyCode() == KeyEvent.VK_DOWN){
-            //Baja de mensaje a no ser que se el ultimo enviado.
-            if(navSentLines <= indSentLines)
-                navSentLines++;
-            //Actualiza el contenido del cuadro de texto.
-            cEnv.setText(sentLines.get(navSentLines));
-        }
-    }
-    
-    @Override
-    public void keyTyped(KeyEvent e) { }
-
-    @Override
-    public void actionPerformed(ActionEvent e) { }
+	@Override
+	public void keyReleased(KeyEvent e) {
+		//Al soltar enter limpia el cuadro de texto.
+		if(e.getKeyCode() == KeyEvent.VK_ENTER){
+			cEnv.setText("");
+			
+		//Navegacion por los mensajes enviados.
+		} else if(e.getKeyCode() == KeyEvent.VK_KP_UP || e.getKeyCode() == KeyEvent.VK_UP){
+			//Sube de mensaje excepto si es el primero.
+			if(navSentLines > 0)
+				navSentLines--;
+			//Si estaba en la ultima linea escrita, la guarda antes de mostrar anteriores.
+			if(navSentLines == indSentLines)
+				sentLines.add(navSentLines+1, cEnv.getText());
+			//Actualiza el conetenido del cuadro de texto.
+			if(navSentLines >= 0)
+				cEnv.setText(sentLines.get(navSentLines));
+			
+		} else if(e.getKeyCode() == KeyEvent.VK_KP_DOWN || e.getKeyCode() == KeyEvent.VK_DOWN){
+			//Baja de mensaje a no ser que se el ultimo enviado.
+			if(navSentLines <= indSentLines){
+				navSentLines++;
+				//Actualiza el contenido del cuadro de texto.
+				cEnv.setText(sentLines.get(navSentLines));
+			}
+		}
+	}	
+	@Override
+	public void keyTyped(KeyEvent e) { }
+	@Override
+	public void actionPerformed(ActionEvent e) { }
 }
 
 // Funciones principales del chat, separadas.
-@SuppressWarnings("serial")
-class chat extends ventPrincipal implements Runnable{    
-        
-    @Override
-    public void run() {
-    //Bienvenida para manejar la conexion.
-    imprimirMsj("Introduce direccion del servidor.");
+class chat implements Runnable{
+	
+	//Declaraciones.
+	static Socket s;
+	//static Scanner in;
+	static ObjectInputStream inOb;
+	static PrintWriter outd;
+	static int filas = 0;
+	static String dirServ;
+	static javax.swing.text.Element cRecElement = null;
+	//  Variable de conexion.
+	static boolean conectado = false;
+	//	UserUsr conectados.
+	static int indLocal = -1;
+	static ArrayList<UserUsr> usersOnline = new ArrayList<UserUsr>();
+	//  chat
+	static final chat ch = new chat();
 
-        //Cuando introduce alguna direccion, prueba la conexion e informa si falla.
-        while(noConecta){
-            //No prueba el resultado hasta que se introduzca uno distinto.
-            if(!yaProbado){
-                try{
-                    // Realiza la conexion.
-                    s = new Socket(dirServ, puertoServ);
-                    noConecta = false;
-                    clearChat();
+	@Override
+	public void run() {
+		while(true){
+			
+			dirServ = ventPrincipal.direccionText.getText();
+			//Limpia el chat.
+			clearChat();
+			
+			//Empieza la conexion del socket.
+			try{
+				// Realiza la conexion.
+				s = new Socket(dirServ, ventPrincipal.puertoServ);
+				conectado = true;
 
-                } catch(Exception e){
+			} catch(Exception e){
+				// Notifica el error de conexion al usuario.
+				imprimirMsj("Error al conectar a '"+dirServ+":"+ventPrincipal.puertoServ+"'");
+			}
 
-                    // Notifica el error de conexion al usuario.
-                    clearChat();
-                    imprimirMsj("Error al conectar a '"+dirServ+":"+puertoServ+"'");
-                    imprimirMsj("");
-                    imprimirMsj("Introducir direccion IP o hostname.");
-                }
-            }
+			if(conectado){
+				try{
+					// Abre los canales
+					inOb = new ObjectInputStream(s.getInputStream()); // In
+					outd = new PrintWriter(s.getOutputStream(), true); // Out
+				} catch(Exception e){}
 
-            // Sleep del thread
-            try{ Thread.sleep(milisRec); } catch(Exception e2) {}
-        }
-        //Reinicia las variables de conexion.
-        noConecta = true;
-        yaProbado = true;
-        
-        conexionRealizada();
-    }
-    
-    void conexionRealizada(){
-        try{
-            // Abre los canales
-            in = new Scanner(s.getInputStream()); // In
-            outd = new PrintWriter(s.getOutputStream(), true); // Out
-        } catch(Exception e){}
-
-        //Notifica la conexion.
-        conectado = true;
-        seguirConectado = true;
-        changeLabel(conexionActual, dirServ+":"+puertoServ+"   ");
-
-
-        //Imprime las lineas que envie el servidor.
-        //Si seguir conectado es false, cierra la conexion.
-        while(seguirConectado){
-            
-            //msjRec toma el valor de lo enviado si no se ha desconectado.
-            //Va en try{} porque al desconenctar se cerrara in.
-            try{ msjRec = in.nextLine(); } catch(Exception e) {}
-            
-            if(!(msjRec.equals("")) && msjRec.charAt(0) == '#')
-                //Si es un comando del servidor lo procesa.
-                lecturaComandoSrv(msjRec);
-            else
-                //Si es un mensaje, lo imprime.
-                imprimirMsj(msjRec);
-        }
-        
-        //Vuelve al proceso de conexion.
-        try{ Thread.sleep(milisRec); } catch(Exception ex){}
-        run();
-    }
+				//Notifica la conexion.
+				changeLabel(ventPrincipal.conexionActual,
+						"Conectado a "+dirServ+":"+ventPrincipal.puertoServ);
+				ventPrincipal.conexionButton.setText("Desconectar");
+				ventPrincipal.cEnv.setEnabled(true);
+				
+				//Envia su username.
+				if(ventPrincipal.usernameText.getText().equals(""))
+					outd.println("Anonymous");
+				else
+					outd.println(ventPrincipal.usernameText.getText());
 
 
-    //Comprueba el comando recibido y lo ejecuta.
-    void lecturaComandoSrv(String msj){
-        if(msj.equals("#clear")){
-            //Limpia el chat.
-            clearChat();
-        } else if(msj.equals("#kick")){
-            //Cierra la conexion porque ha sido kickeado.
-            seguirConectado = false;
-            cerrarConexion();
-        } else if(msj.substring(0,4).equals("#lon")){
-            //Conexion de un nuevo user
-            usersModel.addElement(msj.substring(5));
-        } else if(msj.substring(0,4).equals("#lof")){
-            //Conexion de un nuevo user
-            usersModel.removeElement(msj.substring(5));
-        }
-    }
-    
-    //Comprueba que comando se ha escrito y lo ejecuta.
-    static void lecturaComandoUsr(String msj){
-        if(msj.equalsIgnoreCase("/quit")){
-            // Quit
-            cliente.cerrarPrograma();
-        } else if(msj.equalsIgnoreCase("/who")){
-            // Who
-            enviarMsj(msj);
-        } else if(msj.equalsIgnoreCase("/clear")){
-            // Clear
-            clearChat();
-        } else if(msj.equalsIgnoreCase("/disconnect")){
-            // Disconnect
-            seguirConectado = false;
-            cerrarConexion();
-        } else if(msj.equalsIgnoreCase("/comandos")){
-            // Comandos
-            imprimirMsj("");
-            imprimirMsj(" > Comandos");
-            imprimirMsj("  |  /who  (Muestra usuarios conectados)");
-            imprimirMsj("  |  /clear  (Limpia la ventana de chat)");
-            imprimirMsj("  |  /disconnect  (Sale del servidor)");
-            imprimirMsj("  |  /quit  (Cierra este cliente)");
-            imprimirMsj("  L /comandos  (Muestra esta lista)");
-            imprimirMsj("");
-        } else {
-            // Comando erroneo
-            imprimirMsj("");
-            imprimirMsj(" > Comando erroneo, para ver los comandos escribe /comandos");
-            imprimirMsj("");
-        }
-    }
-    
-    //Envia mensajes al servidor.
-    static void enviarMsj(String msj){
-        outd.println(msj);
-    }
-    
-    //Imprime mensajes en el cuadro de texto cRec.
-    //Es importante que se use esta funcino para mantener la cuenta de las filas.
-    static void imprimirMsj(String msj){
-        try{
-            cRec.insert(msj+"\n", cRec.getLineStartOffset(filas));
-            filas++;
-        } catch(Exception ex) {}
-    }
-    
-    //Limpia cRec.
-    static void clearChat(){
-        cRec.setText("");
-        filas = 0;
-    }
-    
-    //Cambia el titulo de la ventana
-    static void changeWinTitle(String txt){
-        ventPrincipal.setTitle(txt);
-    }
-    
-    //Cambia el texto de label
-    static void changeLabel(JLabel lbl, String txt){
-        lbl.setText(txt);
-    }
-    
-    //Cierra la conexion actual.
-    static void cerrarConexion(){
-        //Interrumpe las conexiones si estan establecidas.        
-        if(chat.conectado) {
-            usersModel.removeAllElements();
-            conectado = false;
-            //Cambia los labels.
-            changeLabel(conexionActual, "Desconectado   ");
-            // Envia al servidor señal de desconexion.
-            chat.enviarMsj("/quit");
-            // Si estan activados, cierra los canales y el socket.
-            try{
-                //Cierra el socket.
-                chat.s.close();  
+				//Imprime las lineas que envie el servidor.
+				//Si conectado es false, cierra la conexion.
+				while(conectado){
+					//Va en try{} porque al desconenctar se cerrara in.
+					try{ lecturaObjeto(inOb.readObject()); } catch(Exception e) {}
+				}
+				
+				//Conexion actual cerrada.
+				clearChat();
+				ventPrincipal.conexionButton.setText("Conectar");
+				imprimirMsj("Introduce la direccion del servidor y conecta."); 
+			}
+			
+			//Pausa el thread actual.
+			synchronized(ch){
+				try { ch.wait(); } catch(Exception e) {}
+			}
+		}
+	}
+	
+	static UserUsr userSearch(String name){
+		UserUsr result = null;
+		for(UserUsr u : usersOnline){
+			if(u.name.equalsIgnoreCase(name))
+				result = u;
+		}
+		return result;
+	}
+	
+	static void lecturaObjeto(Object o){
+		if(o instanceof String){
+			//Si es un String.
+			String msj = (String)o;
+			if(!(msj.equals("")) && msj.charAt(0) == '#')
+				//Si es un comando del servidor lo procesa.
+				lecturaComandoSrv(msj);
+			else
+				//Si es un mensaje, lo imprime.
+				imprimirMsj(msj);
+		} else {
+			//Si no, es un objeto de tipo UserUsr.
+			UserUsr usr = (UserUsr)o;
+			if(!usersOnline.contains(usr)){
+				//Se conecta un usuario nuevo.
+				try{
+					usersOnline.add(usr);
+					ventPrincipal.usersModel.addElement(usr.name);
+				} catch(Exception e){e.printStackTrace();}
+			} else {
+				//Se desconecta un usuario.
+				try{
+					usersOnline.remove(usr);
+					ventPrincipal.usersModel.removeElement(usr.name);
+				} catch(Exception e) {e.printStackTrace();}
+			}
+		}
+	}
 
-            } catch(Exception e){ }
-
-            //Cierra los canales.
-            chat.in.close();
-            chat.outd.close();
-            //Limpia el chat.
-            clearChat();
-        }
-    }
+	//Comprueba el comando recibido y lo ejecuta.
+	static void lecturaComandoSrv(String msj){
+		if(msj.equals("#clear")){
+			//Limpia el chat.
+			clearChat();
+		} else if(msj.equals("#kick")){
+			//Cierra la conexion.
+			cerrarConexion();
+			//Informa en el label que ha sido kickeado.
+			changeLabel(ventPrincipal.conexionActual, "Has sido kickeado.");
+		} else if(msj.equals("#nameEnUso")){
+			//El nombre esta en uso.
+			cerrarConexion();
+			//Informa en el label que el nombre esta en uso.
+			changeLabel(ventPrincipal.conexionActual,
+					"El nombre "+ventPrincipal.usernameText.getText()+" ya esta en uso.");
+		}
+	}
+	
+	//Comprueba que comando se ha escrito y lo ejecuta.
+	static void lecturaComandoUsr(String msj){
+		if(msj.equalsIgnoreCase("/quit")){
+			// Quit
+			cliente.cerrarPrograma();
+		} else if(msj.equalsIgnoreCase("/who")){
+			// Who
+			enviarMsj(msj);
+		} else if(msj.equalsIgnoreCase("/clear")){
+			// Clear
+			clearChat();
+		} else if(msj.length()>10 && msj.substring(0,10).equalsIgnoreCase("/changename")){
+			// Changename
+			enviarMsj(msj);
+		} else if(msj.equalsIgnoreCase("/disconnect")){
+			// Disconnect
+			cerrarConexion();
+		} else if(msj.equalsIgnoreCase("/comandos")){
+			// Comandos
+			imprimirMsj("");
+			imprimirMsj(" > Comandos");
+			imprimirMsj("  |  /who  (Muestra usuarios conectados)");
+			imprimirMsj("  |  /clear  (Limpia la ventana de chat)");
+			imprimirMsj("  |  /disconnect  (Sale del servidor)");
+			imprimirMsj("  |  /quit  (Cierra este cliente)");
+			imprimirMsj("  L /comandos  (Muestra esta lista)");
+			imprimirMsj("");
+		} else {
+			// Comando erroneo
+			imprimirMsj("");
+			imprimirMsj(" > Comando erroneo, para ver los comandos escribe /comandos");
+			imprimirMsj("");
+		}
+	}
+	
+	//Envia mensajes al servidor.
+	static void enviarMsj(String msj){
+		outd.println(msj);
+	}
+	
+	//Imprime mensajes en el cuadro de texto cRec.
+	//Es importante que se use esta funcino para mantener la cuenta de las filas.
+	static void imprimirMsj(String msj){
+		try{
+			if(cRecElement == null) {
+				cRecElement = ventPrincipal.hDoc.getRootElements()[0].getElement(0).getElement(0);
+			}
+			ventPrincipal.hDoc.insertBeforeEnd(cRecElement, 
+					"<font face=\"verdana\" size=\"3\">"+msj+"</font><br>"
+			);
+		} catch(Exception ex) { ex.printStackTrace(); }
+	}
+	
+	//Limpia cRec.
+	static void clearChat(){
+		ventPrincipal.cRec.setText("");
+	}
+	
+	//Cambia el texto de label
+	static void changeLabel(JLabel lbl, String txt){
+		lbl.setText(txt);
+	}
+	
+	//Inicia la conexion.
+	static void inicioThread(){
+		synchronized(ch){
+			ch.notifyAll();
+		}
+	}
+	
+	//Cierra la conexion actual.
+	static void cerrarConexion(){
+		//Interrumpe las conexiones si estan establecidas.		
+		if(chat.conectado) {
+			//Borra los elementos de usuarios online.
+			usersOnline.clear();
+			ventPrincipal.usersModel.removeAllElements();
+			//Pone conectado en false.
+			conectado = false;
+			//Desactiva cEnv.
+			ventPrincipal.cEnv.setEnabled(false);
+			//Cambia el boton.
+			ventPrincipal.conexionButton.setText("Conectar");
+			//Cambia los labels.
+			changeLabel(ventPrincipal.conexionActual, "Desconectado");
+			// Envia al servidor señal de desconexion.
+			chat.enviarMsj("/quit");
+			// Si estan activados, cierra los canales y el socket.
+			try{
+				//Cierra el socket.
+				chat.s.close();
+				//Cierra los canales.
+				chat.inOb.close();
+				chat.outd.close();
+			} catch(Exception e){ }
+		}
+	}
 }
 
 //Main para la ejecucion del Thread del cliente.
 public class cliente{
-    
-    static Thread ch;
-    
-    // Comienzo del programa.
-    public static void main(String[] args) throws IOException {
-        //Thread del cliente.
-        ch = new Thread(new chat());
-        ch.start();
-    }
-    
-    // Final del programa.
-    public static void cerrarPrograma(){
-        
-        //Cierra el Thread del chat.
-//        ch.stop();
-        ch.interrupt();
-        
-        //Cierra la conexion actual si la hay.
-        // NOTA: Comprobador en la funcion.
-        chat.cerrarConexion();        
-        
-        //Sale el programa.
-        System.exit(0);
-    }
-      
+	
+	// Comienzo del programa.
+	public static void main(String[] args) throws IOException {
+		//Genera la ventana.
+		new ventPrincipal();
+	}
+	
+	// Final del programa.
+	public static void cerrarPrograma(){
+		
+		//Cierra la conexion actual si la hay.
+		// NOTA: Comprobador en la funcion.
+		chat.cerrarConexion();		
+		
+		//Sale el programa.
+		System.exit(0);
+	}
+	  
 }
