@@ -1,7 +1,15 @@
-package Servidor;
+/*
+ * Chat server uChat.
+ * 
+ * Developed by sofTroopers:
+ *	  -Friloren
+ *	  -gllera
+ * 
+ */
 
-//Importacion de rusta
-import java.io.PrintWriter;
+package Servidor;
+import Cliente.UserUsr;
+import java.io.ObjectOutputStream;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.sql.Date;
@@ -11,216 +19,213 @@ import java.util.ArrayList;
 import java.util.Scanner;
 
 class servidor {
-	   
-	  //CONFIGURACIONES
-	  //Configuracion de servidor
-	  static int puerto = 1398; //Puerto del servidor
-	  //Configuracion del SQL.
-	  static int prt_SQL = 3306;
-	  static String usr_SQL = "llera_pablo";
-	  static String pwd_SQL = "XNQTnnewBl11";
 
-	  
-	  //INICIALIZACIONES.
-	  //Inicializa cosillas
-	  static Thread proc;
-	  static ServerSocket srvr;
-	  static Socket skt;
-	  public static ArrayList<user> ts;
-	  public static proceso px;
-	  public static long time;
+	//CONFIGURACIONES
+	//Configuracion de servidor
+	static int puerto = 1398;	//Puerto del servidor.
+	static double cVer = 0.25;	//Version del servidor.
+	//Configuracion de SQL.
+	static int prt_SQL = 3306; 	//Puerto de SQL.
+
+
+	//INICIALIZACIONES.
+	//Inicializa cosillas
+	static Thread conexionThread;
+	public static ArrayList<Proceso> ts;
+	public static long time;
 	  
 	
-	public static void main(String args[]) {    
-		  ts = new ArrayList<user>();
+	public static void main(String args[]) {	
+		ts = new ArrayList<Proceso>();
 		  
 	  
-      try {
-    	 //Esperar conexion
-    	 srvr = new ServerSocket(puerto);
-    	 System.out.println("Esperando conexiones en el puerto "+puerto);
-    	 
-    	 while(true){
-    		 //Enlaza conexiones
-	         skt = srvr.accept();
-	         
-	         proc = new Thread(new proceso(skt));
+		try {
+			//Esperar conexion
+			ServerSocket srvr = new ServerSocket(puerto);
+			System.out.println("uChat Server v"+cVer);
+			System.out.println("Esperando conexiones en el puerto "+puerto);
 
-	         proc.start();
-    	 }
-      }
-      
-      catch(Exception e) {
-         System.out.println("Error en el servidor");
-      }
-   }
+			while(true){
+				//Enlaza la conexion
+				Socket skt = srvr.accept();
+				//Define el nuevo thread.
+				conexionThread = new Thread(new Proceso(skt));
+				//Comienza el thread.
+				conexionThread.start();
+			}
+		}
+		
+		catch(Exception e) {
+			System.out.println("Error en el servidor");
+		}
+	}
 }
 
 
-class proceso extends servidor implements Runnable {
+class Proceso extends servidor implements Runnable {
 	
+	//Declaraciones
 	private Socket s;
-	private PrintWriter outd;
+	private ObjectOutputStream outOb;
 	private Scanner in;
 	
-	private int ind;
-	private String msj;
+	private UserUsr usrUsr;
 	private String ip;
 	private String name;
+	private String timeOn;
 	
 	
-	public proceso(Socket s){
+	//Constructor.
+	public Proceso(Socket s){
 		this.s = s;
 	}
 	
-        @Override
+	@Override
 	public void run(){
+		String msj;
 		
 		try{
-	        //Genera los canales.
-	        in = new Scanner(s.getInputStream()); // In
-	        outd = new PrintWriter(s.getOutputStream(), true); // Out
-	        
-	        //Anota la ip.
-	        ip = s.getInetAddress().toString();
-	        
-	        
-	        //Da el mensaje de bienvenida.
-	        outd.println("Por favor introduce tu nombre de usuario");
-	        
-	        
-	        //Da el nombre introducido a la sesion y la registra.
-	        if((name = in.nextLine()).equalsIgnoreCase("/quit"))
-	        	cierreConexion(false, outd, in, s);
-	        else {	       
-		        //Añade al array el usuario con el indice del anterior + 1.
-		        if(ts.isEmpty())
-		        	ind = -1;
-		        else
-		        	ind = ts.get(ts.size()-1).ind;
-		        
-		        ind++;
-		        ts.add(ind, new user(ind, this, name, ip));
-		        
-		        //Limpia la consola del chat entrante.
-		        envMsjCUsr(this, "#clear");
-                        //Envia al nuevo usuario los users actualmente online.
-                        sendOnlineUsers(this, name);
-		        //Informa en consola del servdior y a los usuarios online.
-		        System.out.println("Establecida "+(ip)+", nombre: "+name);
-		        envMsj("");
-		        envMsj(" *** "+name+" se ha conectado ***");
-                        envMsj("#lon "+name);
-		        envMsj("");
-		        
-		        
-		        //Recibe los mensajes.	        
-		        while(!(msj = in.nextLine()).equalsIgnoreCase("/quit")){
-			        envMsjUsr(this, name, msj);
-		        }
-		        
-		        //Se cierra la conexion por escribir 'quit'
-		        cierreConexion(true, outd, in, s);
+			//Genera los canales.
+			in = new Scanner(s.getInputStream()); // In
+			outOb = new ObjectOutputStream(s.getOutputStream()); //Out
+		} catch(Exception e) { System.out.println("Error inesperado generando los canales.");}
+
+		//Limpia la consola del chat entrante.
+		envObjAUsrConcreto(this, "#clear");
+		
+		//Anota la hora de entrada.
+		timeOn = getDateTime();
+		//Anota la ip.
+		ip = s.getInetAddress().toString();
+		//Anota el nombre.
+		if(!isNameAvailable(name = in.nextLine())){
+			//Si esta en uso no permite la conexion.
+			envObjAUsrConcreto(this, "#nameEnUso");
+			
+			//Informa por consola.
+			System.out.println("Rehusado el user "+ip+" por nombre en uso '"+name+"'");
+			//Cierra la conexion.
+			cierreConexion(false);
+		} else {
+			
+			//Envia al nuevo usuario los users actualmente online.
+			sendOnlineUsers();
+			
+			//Añade al array el usuario.
+			usrUsr = new UserUsr(name, ip, timeOn);
+			ts.add(this);
+			
+			//Informa en consola del servdior y a los usuarios online.
+			System.out.println("Entra "+(ip)+", nombre: "+name);
+			enviarObjATodos(usrUsr);
+			
+			try{	
+				//Recibe los mensajes que mande el usuario.			
+				while(!(msj = in.nextLine()).equalsIgnoreCase("/quit"))
+					procesarMsjUsr(this, name, msj);
+				
+			} catch(Exception e){
+				System.out.println("Error con el usuario "+ip+", nombre "+name);
 			}
-		}
-		catch(Exception e){
-			System.out.println("Error con el usuario "+ip+", nombre "+name);
-                        e.printStackTrace();
+		
+			//Se cierra la conexion por escribir 'quit' o por un error.
+			cierreConexion(true);
 		}
 	}
 	
 	//Cierre de conexion.
-	public void cierreConexion(boolean dentro, PrintWriter outd, Scanner in, Socket s) throws Exception{
+	public void cierreConexion(boolean estabaDentro){
 		
-		if(dentro){
-	        //Anuncia el cierre de la conexion.
-	        System.out.println("Cerrando conexion con "+ip+", nombre "+name);
-	        envMsj("");
-	        envMsj(" *** "+name+" abandona el chat ***");
-                envMsj("#lof "+name);
-	        envMsj("");
-	        
-	    //Cierra los canales y el socket
-	        ts.remove(ind);
+		//Elimina al usuario del array.
+		ts.remove(this);
+		
+		//Cierra las cosillas.
+		try{
+			outOb.close();
+			in.close();
+			s.close(); 
+		} catch(Exception e) {}
+		
+		//Anuncia el cierre de la conexion si etaba dentro.
+		if(estabaDentro) {
+			System.out.println("Cerrando conexion con "+ip+", nombre "+name);
+			enviarObjATodos(usrUsr);
 		}
-        outd.close();
-        in.close();
-        s.close();
 	}
 	
 	
-	//Funcion de recivir mensaje.
-	public void recMsj(String mj){
-		outd.println(mj);
+	//Funcion de recivir objeto.
+	public void recibirObj(Object o){
+		try{ outOb.writeObject(o); } catch(Exception e) {}
+	}	
+	
+	//Funcion de enviar objeto a todos.
+	public void enviarObjATodos(Object o){
+		for(Proceso p : ts){
+			envObjAUsrConcreto(p, o);
+		}
+	}
+	
+	// Funcion enviar objeto a user concreto.
+	public void envObjAUsrConcreto(Proceso p, Object o){
+		p.recibirObj(o);
 	}
 	
 	//Funcion de enviar mensaje de usuario.
-	public void envMsjUsr(proceso p, String usr, String mj){
-		if(mj.charAt(0) == '/') comprobarComando(p, mj);
-		else {
-			for(user u : ts){
-				u.p.recMsj("("+getDateTime()+")  -"+usr+": "+mj);
-			}
-		}
+	public void procesarMsjUsr(Proceso p, String usr, String mj){
+		//Si empieza con '/' es un comando.
+		if(mj.charAt(0) == '/')
+			comprobarComando(p, mj);
+		else
+		//Si no, lo mando a los usuarios con el formato.
+			enviarObjATodos("("+getDateTime()+")  -<b>"+usr+"</b>: "+mj);
 	}
 	
-	public void comprobarComando(proceso p, String mj){
+	//Comprueba y procesa el comando.
+	public void comprobarComando(Proceso p, String mj){
 		if(mj.equalsIgnoreCase("/who")){
 			// who, lista todos los usuarios.
-			envMsjCUsr(p, "");
-			envMsjCUsr(p, " > Usuarios conectados:");
+			envObjAUsrConcreto(p, "");
+			envObjAUsrConcreto(p, " > Usuarios conectados:");
 			for(int i = 0; i < ts.size(); i++){
 				if(i != ts.size()-1)
-					envMsjCUsr(p, "  |  "+ts.get(i).p.name);
+					envObjAUsrConcreto(p, "  |  "+ts.get(i).name);
 				else
-					envMsjCUsr(p, "  L "+ts.get(i).p.name+"");
+					envObjAUsrConcreto(p, "  L "+ts.get(i).name+"");
 			}
-			envMsjCUsr(p, "");
+			envObjAUsrConcreto(p, "");
+		} else if(mj.substring(0,10).equalsIgnoreCase("/changename")){
+			// Changename, cambia el nombre.
+			//TODO.
 		} else {
 			// comando invalido.
-			envMsjCUsr(p, "Comando erroneo");
-			envMsjCUsr(p, "");
+			envObjAUsrConcreto(p, "");
+			envObjAUsrConcreto(p, "Comando erroneo");
+			envObjAUsrConcreto(p, "");
 		}
 	}
 	
-	// Funcino enviar Mensaje a user concreto.
-	public void envMsjCUsr(proceso p, String mj){
-		p.recMsj(mj);
+	//Envia los usuarios online al cliente, excepto el mismo.
+	public void sendOnlineUsers(){
+		for(Proceso p : ts)
+			this.recibirObj(p.usrUsr);
 	}
 	
-	//Funcion de enviar mensaje.
-	public void envMsj(String mj){
-		for(user u : ts){
-			u.p.recMsj(mj);
-		}
+	//Comprueba si el nombre esta disponible.
+	public boolean isNameAvailable(String name){
+		boolean result = true;
+		for(Proceso p : ts)
+			if(p.name.equals(name))
+				result = false;
+		return result;				
 	}
 	
-    public String getDateTime() {
-        DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
-        Date date = new Date(System.currentTimeMillis());
-        return dateFormat.format(date);
-    }
-    
-    public void sendOnlineUsers(proceso p, String name){
-        for(user u : ts)
-        if(!u.usr.equals(name))
-                envMsjCUsr(p, "#lon "+u.usr);
-    }
-}
-
-
-//Tipo user.
-class user{
-	
-	int ind;
-	proceso p;
-	String usr;
-	String ip;
-	
-	user(int ind, proceso p, String usr, String ip){
-		this.ind = ind;
-		this.p = p;
-		this.usr = usr;
-		this.ip = ip;
+	//Obtiene la hora actual.
+	public String getDateTime() {
+		DateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+		Date date = new Date(System.currentTimeMillis());
+		
+		return dateFormat.format(date);
 	}
+	
 }

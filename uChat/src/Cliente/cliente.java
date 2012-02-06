@@ -8,6 +8,7 @@
  */
 
 package Cliente;
+
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Dimension;
@@ -48,16 +49,15 @@ import javax.swing.text.html.HTMLDocument;
 class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 	
 	//Definicion de cosillas.
-	static int puertoServ = 1398; //Puerto del servidor.
-	double cVers = 0.61; //Version del programa. Aumentar conforme se realizan cambios.
-	int milisRec = 500; //La frecuencia en ms con la que el programa consulta si se
-						//han introducido los datos requeridos.
+	static int puertoServ = 1398;	//Puerto del servidor.
+	double cVers = 0.62;			//Version del programa. Aumentar conforme se realizan cambios.
+	
 	
 	//Declaraciones generales.
 	//	Cuadros de texto.
 	static JTextArea cEnv;
 	static JTextPane cRec;
-	//	  HTML Doc
+	//	HTML Doc
 	static HTMLDocument hDoc;
 	//	Field
 	static JTextField direccionText;
@@ -69,8 +69,6 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 	static JLabel conexionActual;
 	//	Buttons
 	static JButton conexionButton;
-	//	String
-	static String msj = "";
 
 	//Thread de conexion.
 	static Thread conexion = new Thread(new chat());
@@ -96,7 +94,8 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 		
 		
 		//Objetos de la ventana.
-	
+		
+		//Menu de conexion
 		//  Labels
 		conexionActual = new JLabel("Desconectado.");
 			conexionActual.setBounds(10,470,510,20);
@@ -155,20 +154,7 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 		//	Model
 		usersModel = new DefaultListModel<String>();
 		//	Lista
-		usersList = new JList<String>(usersModel);
-		// Panel de detalles de los usuarios.
-		final JPopupMenu usersDetailPane = new JPopupMenu();
-			final JLabel usrName = new JLabel();
-				usrName.setFont(new Font(usrName.getFont().getName(),Font.BOLD,usrName.getFont().getSize()));
-			final JLabel usrIP = new JLabel();
-			final JLabel usrTimeOn = new JLabel();
-				
-			usersDetailPane.setBackground(Color.lightGray);
-			usersDetailPane.setBorder(BorderFactory.createLineBorder(Color.black));
-			usersDetailPane.add(usrName);
-			usersDetailPane.add(usrIP);
-			usersDetailPane.add(usrTimeOn);
-			
+		usersList = new JList<String>(usersModel);		
 		//	Scroll
 		final JScrollPane usersScrollPane = new JScrollPane(usersList);
 			usersScrollPane.setBounds(370,50,150,415);
@@ -193,7 +179,20 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 		ventPrincipal.add(new JLabel(""));
 		
 		
-		//Listener de mouse de la lista.
+		//Listener de mouse para el popup de la lista.
+		//	Popup de detalles de los usuarios.
+		final JPopupMenu usersDetailPopUp = new JPopupMenu();
+			final JLabel usrIP = new JLabel();
+			final JLabel usrTimeOn = new JLabel();
+			final JLabel usrName = new JLabel();
+				usrName.setFont(new Font(usrName.getFont().getName(),Font.BOLD,usrName.getFont().getSize()));
+				
+			usersDetailPopUp.setBackground(Color.lightGray);
+			usersDetailPopUp.setBorder(BorderFactory.createLineBorder(Color.black));
+			usersDetailPopUp.add(usrName);
+			usersDetailPopUp.add(usrIP);
+			usersDetailPopUp.add(usrTimeOn);
+		//	MouseListener.
 		usersList.addMouseListener(new MouseAdapter() {
 			public void mouseClicked(MouseEvent e) {
 				
@@ -206,11 +205,12 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 					usrName.setText(userSelect);
 					usrIP.setText(usr.ip);
 					usrTimeOn.setText(usr.timeOn);
-					usersDetailPane.show(usersScrollPane, p.x, p.y);
+					usersDetailPopUp.show(usersScrollPane, p.x, p.y);
 				} 
 			}
 		});
-		
+
+
 		//Listener de la vetana al cerrarse.
 		ventPrincipal.addWindowListener(new java.awt.event.WindowAdapter() {
 			@Override
@@ -251,7 +251,7 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 	public void keyPressed(KeyEvent e) {
 		if(e.getKeyCode() == KeyEvent.VK_ENTER){
 			//Obtiene el mensaje.
-			msj = cEnv.getText();
+			String msj = cEnv.getText();
 			// Si el mensaje es nulo o no esta conectado, no lo envia.
 			if(!msj.equals("") && !msj.equals(" ")){
 				//Graba el mensaje.
