@@ -201,7 +201,7 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 				Point  p = e.getPoint();
 				
 				if((userSelect = usersList.getSelectedValue()) != null){
-					usr = chat.userSearch(userSelect);
+					usr = chat.usersOnline.get(usersList.getSelectedIndex());//chat.userSearch(userSelect);
 					usrName.setText(userSelect);
 					usrIP.setText(usr.ip);
 					usrTimeOn.setText(usr.timeOn);
@@ -387,82 +387,103 @@ class chat implements Runnable{
 			}
 		}
 	}
+
 	
-	static UserUsr userSearch(String name){
-		UserUsr result = null;
-		for(UserUsr u : usersOnline){
-			if(u.name.equalsIgnoreCase(name))
-				result = u;
-		}
-		return result;
-	}
-	
-	static void lecturaObjeto(Object o){
-		if(o instanceof String){
+	static void lecturaObjeto(Object o) throws Exception{
+		switch(o.getClass().getName()){
+		
+		case "java.lang.String":
 			//Si es un String.
 			String msj = (String)o;
+			
 			if(!(msj.equals("")) && msj.charAt(0) == '#')
 				//Si es un comando del servidor lo procesa.
 				lecturaComandoSrv(msj);
 			else
 				//Si es un mensaje, lo imprime.
 				imprimirMsj(msj);
-		} else {
-			//Si no, es un objeto de tipo UserUsr.
+			break;
+		
+		case "Cliente.UserUsr":
+			//Si es un UserUsr.
 			UserUsr usr = (UserUsr)o;
+			
 			if(!usersOnline.contains(usr)){
-				//Se conecta un usuario nuevo.
-				try{
-					usersOnline.add(usr);
-					ventPrincipal.usersModel.addElement(usr.name);
-				} catch(Exception e){e.printStackTrace();}
+			//Se conecta un usuario nuevo.
+				usersOnline.add(usr);
+				ventPrincipal.usersModel.addElement(usr.name);
 			} else {
-				//Se desconecta un usuario.
-				try{
-					usersOnline.remove(usr);
-					ventPrincipal.usersModel.removeElement(usr.name);
-				} catch(Exception e) {e.printStackTrace();}
+			//Se desconecta un usuario.
+				usersOnline.remove(usr);                           
+				ventPrincipal.usersModel.removeElement(usr.name);
 			}
+			break;
+		
+		default:
+			//There shouldn't be any other objects.
 		}
 	}
 
 	//Comprueba el comando recibido y lo ejecuta.
 	static void lecturaComandoSrv(String msj){
-		if(msj.equals("#clear")){
+		switch(msj){
+		case "#clear":
 			//Limpia el chat.
 			clearChat();
-		} else if(msj.equals("#kick")){
+			break;
+			
+		case "#kick":
 			//Cierra la conexion.
 			cerrarConexion();
 			//Informa en el label que ha sido kickeado.
 			changeLabel(ventPrincipal.conexionActual, "Has sido kickeado.");
-		} else if(msj.equals("#nameEnUso")){
+			break;
+			
+		case "#nameEnUso":
 			//El nombre esta en uso.
 			cerrarConexion();
 			//Informa en el label que el nombre esta en uso.
 			changeLabel(ventPrincipal.conexionActual,
 					"El nombre "+ventPrincipal.usernameText.getText()+" ya esta en uso.");
+			break;
+			
+		//case "#custom":
+		//Add your custom commands here.
+			
+		default:
+			//No debería mandar otros mensajes.
 		}
 	}
 	
 	//Comprueba que comando se ha escrito y lo ejecuta.
 	static void lecturaComandoUsr(String msj){
-		if(msj.equalsIgnoreCase("/quit")){
+		switch(msj){
+		case "/quit":
 			// Quit
 			cliente.cerrarPrograma();
-		} else if(msj.equalsIgnoreCase("/who")){
+			break;
+			
+		case "/who":
 			// Who
 			enviarMsj(msj);
-		} else if(msj.equalsIgnoreCase("/clear")){
+			break;
+			
+		case "/clear":
 			// Clear
 			clearChat();
-		} else if(msj.length()>10 && msj.substring(0,10).equalsIgnoreCase("/changename")){
+			break;
+			
+		case "/changename":
 			// Changename
 			enviarMsj(msj);
-		} else if(msj.equalsIgnoreCase("/disconnect")){
+			break;
+			
+		case "/disconnect":
 			// Disconnect
 			cerrarConexion();
-		} else if(msj.equalsIgnoreCase("/comandos")){
+			break;
+			
+		case "/comandos":
 			// Comandos
 			imprimirMsj("");
 			imprimirMsj(" > Comandos");
@@ -472,7 +493,12 @@ class chat implements Runnable{
 			imprimirMsj("  |  /quit  (Cierra este cliente)");
 			imprimirMsj("  L /comandos  (Muestra esta lista)");
 			imprimirMsj("");
-		} else {
+			break;
+		
+		//case "/custom":
+		//Add your custom commands here.
+			
+		default:
 			// Comando erroneo
 			imprimirMsj("");
 			imprimirMsj(" > Comando erroneo, para ver los comandos escribe /comandos");
@@ -521,6 +547,8 @@ class chat implements Runnable{
 		if(chat.conectado) {
 			//Borra los elementos de usuarios online.
 			usersOnline.clear();
+			ventPrincipal.usersList.removeAll();
+			ventPrincipal.usersList.list();
 			ventPrincipal.usersModel.removeAllElements();
 			//Pone conectado en false.
 			conectado = false;
