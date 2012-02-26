@@ -1,3 +1,12 @@
+/*
+ * Chat client uChat.
+ * 
+ * Developed by sofTroopers:
+ *	  -Friloren
+ *	  -gllera
+ * 
+ */
+
 package Cliente;
 
 import java.io.ObjectInputStream;

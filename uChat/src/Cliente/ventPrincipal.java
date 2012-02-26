@@ -1,3 +1,12 @@
+/*
+ * Chat client uChat.
+ * 
+ * Developed by sofTroopers:
+ *	  -Friloren
+ *	  -gllera
+ * 
+ */
+
 package Cliente;
 
 import java.awt.BorderLayout;
@@ -42,6 +51,7 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 	//Declaraciones generales.
 	//	Cuadros de texto.
 	static JTextArea cEnv;
+		static JScrollPane cEnvScroll;
 	static JTextPane cRec;
 	//	HTML Doc
 	static HTMLDocument hDoc;
@@ -63,6 +73,7 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 	//Array de lineas grabadas y su indice.
 	int indSentLines = -1;
 	int navSentLines = 0;
+	boolean shiftOn = false;
 	static ArrayList<String> sentLines = new ArrayList<String>();
 	
 	
@@ -84,7 +95,7 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 		//Menu de conexion
 		//  Labels
 		conexionActual = new JLabel("Desconectado.");
-			conexionActual.setBounds(10,470,510,20);
+			conexionActual.setBounds(10,500,510,20);
 		JLabel direccionLab = new JLabel("Direccion:");
 			direccionLab.setBounds(10, 0, 100, 20);
 		JLabel usernameLab = new JLabel("Username");
@@ -130,8 +141,8 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 			cEnv.addKeyListener(this);
 			cEnv.getDocument().putProperty("filterNewlines", Boolean.TRUE);
 		//		Scroll
-		JScrollPane cEnvScroll = new JScrollPane(cEnv);
-			cEnvScroll.setBounds(10,400,350,65);
+		cEnvScroll = new JScrollPane(cEnv);
+			cEnvScroll.setBounds(10,430,350,65);
 			cEnvScroll.setViewportView(cEnv);
 			cEnvScroll.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		
@@ -143,7 +154,7 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 		usersList = new JList<String>(usersModel);		
 		//	Scroll
 		final JScrollPane usersScrollPane = new JScrollPane(usersList);
-			usersScrollPane.setBounds(370,50,150,415);
+			usersScrollPane.setBounds(370,50,150,445);
 			usersScrollPane.setViewportView(usersList);
 			usersScrollPane.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 			
@@ -180,6 +191,7 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 			usersDetailPopUp.add(usrTimeOn);
 		//	MouseListener.
 		usersList.addMouseListener(new MouseAdapter() {
+			@Override
 			public void mouseClicked(MouseEvent e) {
 				
 				String userSelect;
@@ -235,7 +247,10 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 
 	@Override
 	public void keyPressed(KeyEvent e) {
+		
+		//Enviar un mensaje o comando.
 		if(e.getKeyCode() == KeyEvent.VK_ENTER){
+			
 			//Obtiene el mensaje.
 			String msj = cEnv.getText();
 			// Si el mensaje es nulo o no esta conectado, no lo envia.
@@ -257,20 +272,12 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 						chat.enviarMsj(msj);
 					}
 				}
-				cEnv.setText("");
 			}
-		}
-	}
-
-
-	@Override
-	public void keyReleased(KeyEvent e) {
-		//Al soltar enter limpia el cuadro de texto.
-		if(e.getKeyCode() == KeyEvent.VK_ENTER){
-			cEnv.setText("");
-			
+		
 		//Navegacion por los mensajes enviados.
-		} else if(e.getKeyCode() == KeyEvent.VK_KP_UP || e.getKeyCode() == KeyEvent.VK_UP){
+		} else if((e.getKeyCode() == KeyEvent.VK_KP_UP || e.getKeyCode() == KeyEvent.VK_UP)
+				&& e.isShiftDown()) {
+			
 			//Sube de mensaje excepto si es el primero.
 			if(navSentLines > 0)
 				navSentLines--;
@@ -281,15 +288,28 @@ class ventPrincipal extends JFrame implements ActionListener, KeyListener{
 			if(navSentLines >= 0)
 				cEnv.setText(sentLines.get(navSentLines));
 			
-		} else if(e.getKeyCode() == KeyEvent.VK_KP_DOWN || e.getKeyCode() == KeyEvent.VK_DOWN){
-			//Baja de mensaje a no ser que se el ultimo enviado.
+		} else if((e.getKeyCode() == KeyEvent.VK_KP_DOWN || e.getKeyCode() == KeyEvent.VK_DOWN)
+				&& e.isShiftDown()) {
+
+			//Baja de mensaje a no ser que sea el ultimo enviado.
 			if(navSentLines <= indSentLines){
 				navSentLines++;
 				//Actualiza el contenido del cuadro de texto.
 				cEnv.setText(sentLines.get(navSentLines));
 			}
+		}		
+	}
+
+
+	@Override
+	public void keyReleased(KeyEvent e) {
+		
+		//Al soltar enter limpia el cuadro de texto.
+		if(e.getKeyCode() == KeyEvent.VK_ENTER){
+			cEnv.setText("");
 		}
-	}	
+	}
+	
 	@Override
 	public void keyTyped(KeyEvent e) { }
 	@Override
